@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import type {
   EstadoExpediente,
+  EventoHistorial,
   Expediente,
   Resultado,
   TipoEvento,
@@ -9,6 +10,7 @@ import type {
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Alert } from '../../components/ui/Alert';
+import { Icon, type NombreIcono } from '../../components/ui/Icon';
 
 interface DetalleExpedienteProps {
   expediente: Expediente;
@@ -32,27 +34,37 @@ const ESTILO_ESTADO: Record<EstadoExpediente, string> = {
 
 const ESTILO_EVENTO: Record<
   TipoEvento,
-  { etiqueta: string; icono: string; punto: string; caja: string }
+  { etiqueta: string; icono: NombreIcono; punto: string; caja: string; texto: string }
 > = {
   apertura: {
     etiqueta: 'Apertura',
-    icono: '📂',
+    icono: 'apertura',
     punto: 'bg-blue-500',
     caja: 'border-blue-200 bg-blue-50',
+    texto: 'text-blue-700',
   },
   actividad: {
     etiqueta: 'Actividad',
-    icono: '📝',
+    icono: 'actividad',
     punto: 'bg-emerald-500',
     caja: 'border-emerald-200 bg-emerald-50',
+    texto: 'text-emerald-700',
   },
   cambio_estado: {
     etiqueta: 'Cambio de estado',
-    icono: '🔄',
+    icono: 'cambio',
     punto: 'bg-purple-500',
     caja: 'border-purple-200 bg-purple-50',
+    texto: 'text-purple-700',
   },
 };
+
+/** Ícono específico del evento: candado para cierres y candado abierto para reaperturas. */
+function iconoDeEvento(ev: EventoHistorial): NombreIcono {
+  if (ev.tipo === 'cambio_estado' && ev.estadoNuevo === 'Cerrado') return 'cierre';
+  if (ev.tipo === 'cambio_estado' && ev.estadoAnterior === 'Cerrado') return 'reapertura';
+  return ESTILO_EVENTO[ev.tipo].icono;
+}
 
 function formatearFecha(iso?: string): string {
   if (!iso) return '—';
@@ -210,7 +222,10 @@ export function DetalleExpediente({
           role="status"
           className="flex items-start justify-between gap-3 rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-emerald-800"
         >
-          <span>✅ {mensaje.texto}</span>
+          <span className="flex items-start gap-2">
+            <Icon name="exito" className="mt-0.5 h-4 w-4" />
+            {mensaje.texto}
+          </span>
           <button
             type="button"
             onClick={() => setMensaje(null)}
@@ -225,7 +240,10 @@ export function DetalleExpediente({
 
       {estado === 'Cerrado' && (
         <div className="rounded-lg border border-gray-300 bg-gray-100 p-4 text-gray-800">
-          <p className="font-semibold">🔒 Expediente cerrado</p>
+          <p className="flex items-center gap-2 font-semibold">
+            <Icon name="cierre" className="h-4 w-4" />
+            Expediente cerrado
+          </p>
           <p className="text-sm">
             Mientras esté cerrado no admite nuevas actividades. Si se recibe información nueva, puede reabrirse
             indicando el motivo.
@@ -308,8 +326,12 @@ export function DetalleExpediente({
               .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())
               .map((ev) => (
                 <li key={ev.id} className="rounded-md border border-gray-200 p-3">
-                  <p className="font-medium">
-                    {ev.estadoNuevo === 'Cerrado' ? '🔒 Cierre' : '🔓 Reapertura'} · {formatearFecha(ev.fecha)}
+                  <p className="flex items-center gap-2 font-medium">
+                    <Icon
+                      name={ev.estadoNuevo === 'Cerrado' ? 'cierre' : 'reapertura'}
+                      className={`h-4 w-4 ${ev.estadoNuevo === 'Cerrado' ? 'text-gray-700' : 'text-amber-600'}`}
+                    />
+                    {ev.estadoNuevo === 'Cerrado' ? 'Cierre' : 'Reapertura'} · {formatearFecha(ev.fecha)}
                   </p>
                   <p className="text-gray-700">
                     <span className="font-medium">Motivo:</span> {ev.motivo ?? '—'}
@@ -347,7 +369,12 @@ export function DetalleExpediente({
                   >
                     Cerrar expediente
                   </Button>
-                  {!puedeCerrar && <p className="text-sm text-amber-700">⚠️ {razonNoCierre}</p>}
+                  {!puedeCerrar && (
+                    <p className="flex items-start gap-2 text-sm text-amber-700">
+                      <Icon name="advertencia" className="mt-0.5 h-4 w-4" />
+                      {razonNoCierre}
+                    </p>
+                  )}
                 </>
               ) : (
                 <form
@@ -442,8 +469,12 @@ export function DetalleExpediente({
       <Card title="Historial" subtitle={`${historialOrdenado.length} evento(s) en orden cronológico`}>
         <div className="mb-4 flex flex-wrap gap-4 text-xs text-gray-600">
           {(Object.keys(ESTILO_EVENTO) as TipoEvento[]).map((t) => (
-            <span key={t} className="flex items-center gap-1">
-              <span className={`inline-block h-3 w-3 rounded-full ${ESTILO_EVENTO[t].punto}`} />
+            <span key={t} className="flex items-center gap-1.5">
+              <span
+                className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-white ${ESTILO_EVENTO[t].punto}`}
+              >
+                <Icon name={ESTILO_EVENTO[t].icono} className="h-3 w-3" />
+              </span>
               {ESTILO_EVENTO[t].etiqueta}
             </span>
           ))}
@@ -455,16 +486,20 @@ export function DetalleExpediente({
           <ol className="relative space-y-4 border-l-2 border-gray-200 pl-6">
             {historialOrdenado.map((ev) => {
               const estilo = ESTILO_EVENTO[ev.tipo];
+              const icono = iconoDeEvento(ev);
               return (
                 <li key={ev.id} className="relative">
                   <span
                     aria-hidden="true"
-                    className={`absolute -left-[33px] top-3 h-4 w-4 rounded-full border-2 border-white ${estilo.punto}`}
-                  />
+                    className={`absolute -left-[39px] top-2.5 inline-flex h-7 w-7 items-center justify-center rounded-full text-white shadow-sm ring-4 ring-white ${estilo.punto}`}
+                  >
+                    <Icon name={icono} className="h-3.5 w-3.5" />
+                  </span>
                   <div className={`rounded-lg border p-3 ${estilo.caja}`}>
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="text-sm font-semibold text-gray-900">
-                        {estilo.icono} {estilo.etiqueta}
+                      <span className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
+                        <Icon name={icono} className={`h-4 w-4 ${estilo.texto}`} />
+                        {estilo.etiqueta}
                         {ev.tipo === 'actividad' && ev.tipoActividad ? ` · ${ev.tipoActividad}` : ''}
                       </span>
                       <time dateTime={ev.fecha} className="text-xs text-gray-600">
