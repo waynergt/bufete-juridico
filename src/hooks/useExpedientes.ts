@@ -43,10 +43,11 @@ export function useExpedientes(): UseExpedientes {
     return true;
   }, []);
 
-  // Si otra pestaña modifica los datos, se recargan aquí.
+  // Si otra pestaña modifica o borra los datos (key null = localStorage.clear()),
+  // se recargan aquí para no mostrar información desactualizada.
   useEffect(() => {
     const alCambiar = (evento: StorageEvent) => {
-      if (evento.key !== CLAVE_STORAGE) return;
+      if (evento.key !== null && evento.key !== CLAVE_STORAGE) return;
       const lista = repo.cargarTodos();
       actual.current = lista;
       setExpedientes(lista);
