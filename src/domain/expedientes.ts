@@ -28,7 +28,11 @@ export const MENSAJES = {
   noEncontrado: 'No se encontró el expediente indicado.',
   guardado: 'No se pudieron guardar los datos en el navegador. Intente de nuevo.',
   actividadEnCerrado: 'El expediente está cerrado y no admite nuevas actividades.',
-  cambioEnCerrado: 'El expediente está cerrado y no admite cambios de estado.',
+  cambioEnCerrado:
+    "El expediente está cerrado. Use 'Reabrir expediente' para retomar el seguimiento.",
+  yaCerrado: 'El expediente ya está cerrado.',
+  reabrirNoCerrado: 'Solo se puede reabrir un expediente Cerrado.',
+  motivoReapertura: 'Ingrese el motivo de reapertura.',
   yaEnSeguimiento: 'El expediente ya está en seguimiento.',
   cerrarDesdeAbierto:
     "No se puede cerrar un expediente Abierto. Primero páselo a 'En seguimiento'.",
@@ -159,9 +163,20 @@ const cambioDeEstado = (
     },
     {
       estado: estadoNuevo,
-      ...(estadoNuevo === 'Cerrado' ? { fechaCierre: ahora, motivoCierre: motivo } : {}),
+      // Los datos de cierre describen el cierre VIGENTE. Al reabrir se limpian aquí,
+      // pero cada cierre anterior queda conservado en el historial con fecha y motivo.
+      fechaCierre: estadoNuevo === 'Cerrado' ? ahora : undefined,
+      motivoCierre: estadoNuevo === 'Cerrado' ? motivo : undefined,
     },
   );
+
+/** Cierres registrados (actuales y anteriores), tomados del historial en orden. */
+export const obtenerCierres = (exp: Expediente): EventoHistorial[] =>
+  exp.historial.filter((e) => e.tipo === 'cambio_estado' && e.estadoNuevo === 'Cerrado');
+
+/** Reaperturas registradas, tomadas del historial en orden. */
+export const obtenerReaperturas = (exp: Expediente): EventoHistorial[] =>
+  exp.historial.filter((e) => e.tipo === 'cambio_estado' && e.estadoAnterior === 'Cerrado');
 
 /** Abierto → En seguimiento, por acción explícita del usuario. */
 export function pasarASeguimiento(
@@ -179,7 +194,7 @@ export function cerrarExpediente(
   motivo: string,
   ahora: string = fechaActual(),
 ): Resultado<Expediente> {
-  if (exp.estado === 'Cerrado') return fallo({ estado: MENSAJES.cambioEnCerrado });
+  if (exp.estado === 'Cerrado') return fallo({ estado: MENSAJES.yaCerrado });
   if (exp.estado === 'Abierto') return fallo({ estado: MENSAJES.cerrarDesdeAbierto });
 
   const errores: Errores = {};
@@ -189,4 +204,20 @@ export function cerrarExpediente(
   if (Object.keys(errores).length > 0) return fallo(errores);
 
   return exito(cambioDeEstado(exp, 'Cerrado', ahora, motivoLimpio));
+}
+
+/**
+ * Parte 2: Cerrado → En seguimiento, con motivo no vacío.
+ * Conserva id, datos, actividades y TODOS los cierres previos (en el historial).
+ * Después se permiten nuevas actividades y un nuevo cierre con las reglas originales.
+ */
+export function reabrirExpediente(
+  exp: Expediente,
+  motivo: string,
+  ahora: string = fechaActual(),
+): Resultado<Expediente> {
+  if (exp.estado !== 'Cerrado') return fallo({ estado: MENSAJES.reabrirNoCerrado });
+  const motivoLimpio = limpiar(motivo);
+  if (!motivoLimpio) return fallo({ motivo: MENSAJES.motivoReapertura });
+  return exito(cambioDeEstado(exp, 'En seguimiento', ahora, motivoLimpio));
 }

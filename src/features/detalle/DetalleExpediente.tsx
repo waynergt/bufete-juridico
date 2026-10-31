@@ -15,6 +15,8 @@ interface DetalleExpedienteProps {
   onAgregarActividad: (descripcion: string, tipo?: string) => Resultado<Expediente>;
   onPasarASeguimiento: () => Resultado<Expediente>;
   onCerrar: (motivo: string) => Resultado<Expediente>;
+  /** Parte 2: reabrir un expediente Cerrado (opcional para no romper el contrato). */
+  onReabrir?: (motivo: string) => Resultado<Expediente>;
   onVolver: () => void;
 }
 
@@ -73,6 +75,7 @@ export function DetalleExpediente({
   onAgregarActividad,
   onPasarASeguimiento,
   onCerrar,
+  onReabrir,
   onVolver,
 }: DetalleExpedienteProps) {
   const [descripcion, setDescripcion] = useState('');
@@ -82,6 +85,9 @@ export function DetalleExpediente({
   const [motivo, setMotivo] = useState('');
   const [errorMotivo, setErrorMotivo] = useState('');
   const [mensaje, setMensaje] = useState<Mensaje>(null);
+  const [mostrarReapertura, setMostrarReapertura] = useState(false);
+  const [motivoReapertura, setMotivoReapertura] = useState('');
+  const [errorReapertura, setErrorReapertura] = useState('');
 
   const { estado } = expediente;
   const cantidadActividades = expediente.historial.filter((e) => e.tipo === 'actividad').length;
@@ -91,6 +97,13 @@ export function DetalleExpediente({
     estado === 'Abierto'
       ? 'Para cerrar, primero pase el expediente a "En seguimiento".'
       : 'Para cerrar, registre al menos una actividad en el expediente.';
+
+  const cierres = expediente.historial.filter(
+    (e) => e.tipo === 'cambio_estado' && e.estadoNuevo === 'Cerrado',
+  );
+  const reaperturas = expediente.historial.filter(
+    (e) => e.tipo === 'cambio_estado' && e.estadoAnterior === 'Cerrado',
+  );
 
   const historialOrdenado = [...expediente.historial].sort(
     (a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime(),
@@ -154,6 +167,29 @@ export function DetalleExpediente({
     }
   }
 
+  function cancelarReapertura() {
+    setMostrarReapertura(false);
+    setMotivoReapertura('');
+    setErrorReapertura('');
+  }
+
+  function handleReabrir(e: FormEvent) {
+    e.preventDefault();
+    setMensaje(null);
+    if (!onReabrir) return;
+    if (!motivoReapertura.trim()) {
+      setErrorReapertura('Ingrese el motivo de reapertura. No puede quedar vacío ni contener solo espacios.');
+      return;
+    }
+    setErrorReapertura('');
+    const resultado = onReabrir(motivoReapertura.trim());
+    if (procesar(resultado, 'Expediente reabierto. Pasó a "En seguimiento" y conserva su historial.')) {
+      cancelarReapertura();
+    } else if (!resultado.ok && resultado.errores.motivo) {
+      setErrorReapertura(resultado.errores.motivo);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-4">
       <div>
@@ -191,8 +227,56 @@ export function DetalleExpediente({
         <div className="rounded-lg border border-gray-300 bg-gray-100 p-4 text-gray-800">
           <p className="font-semibold">🔒 Expediente cerrado</p>
           <p className="text-sm">
-            Este expediente solo está disponible para consulta. No admite nuevas actividades ni cambios de estado.
+            Mientras esté cerrado no admite nuevas actividades. Si se recibe información nueva, puede reabrirse
+            indicando el motivo.
           </p>
+          {onReabrir && (
+            <div className="mt-3">
+              {!mostrarReapertura ? (
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    setMostrarReapertura(true);
+                    setMensaje(null);
+                  }}
+                >
+                  Reabrir expediente
+                </Button>
+              ) : (
+                <form onSubmit={handleReabrir} noValidate className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                  <label htmlFor="motivo-reapertura" className="block text-sm font-medium text-gray-800">
+                    Motivo de reapertura <span className="text-red-600">*</span>
+                  </label>
+                  <textarea
+                    id="motivo-reapertura"
+                    rows={3}
+                    value={motivoReapertura}
+                    onChange={(e) => {
+                      setMotivoReapertura(e.target.value);
+                      if (errorReapertura) setErrorReapertura('');
+                    }}
+                    aria-invalid={!!errorReapertura}
+                    placeholder="Ej.: Se recibió nueva información de la persona solicitante."
+                    className={`w-full rounded-md border bg-white p-2 text-sm focus:outline-none focus:ring-2 ${
+                      errorReapertura ? 'border-red-500 focus:ring-red-300' : 'border-gray-300 focus:ring-blue-300'
+                    }`}
+                  />
+                  {errorReapertura && <p className="text-sm text-red-700">{errorReapertura}</p>}
+                  <p className="text-xs text-gray-600">
+                    El expediente pasará a "En seguimiento". Se conservan sus datos, actividades y cierres anteriores.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="submit" variant="primary">
+                      Confirmar reapertura
+                    </Button>
+                    <Button type="button" variant="ghost" onClick={cancelarReapertura}>
+                      Cancelar
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -214,8 +298,30 @@ export function DetalleExpediente({
         </dl>
       </Card>
 
+      {(cierres.length > 0 || reaperturas.length > 0) && (
+        <Card
+          title="Cierres y reaperturas"
+          subtitle={`${cierres.length} cierre(s) y ${reaperturas.length} reapertura(s) conservados`}
+        >
+          <ul className="space-y-2 text-sm">
+            {[...cierres, ...reaperturas]
+              .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())
+              .map((ev) => (
+                <li key={ev.id} className="rounded-md border border-gray-200 p-3">
+                  <p className="font-medium">
+                    {ev.estadoNuevo === 'Cerrado' ? '🔒 Cierre' : '🔓 Reapertura'} · {formatearFecha(ev.fecha)}
+                  </p>
+                  <p className="text-gray-700">
+                    <span className="font-medium">Motivo:</span> {ev.motivo ?? '—'}
+                  </p>
+                </li>
+              ))}
+          </ul>
+        </Card>
+      )}
+
       {estado !== 'Cerrado' && (
-        <Card title="Acciones del expediente" subtitle="Flujo: Abierto → En seguimiento → Cerrado">
+        <Card title="Acciones del expediente" subtitle="Flujo: Abierto → En seguimiento → Cerrado (reabrible)">
           <div className="space-y-4">
             {estado === 'Abierto' && (
               <div className="space-y-2">

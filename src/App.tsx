@@ -23,6 +23,7 @@ function App() {
     agregarActividad,
     pasarASeguimiento,
     cerrar,
+    reabrir,
     buscar,
   } = useExpedientes();
 
@@ -124,6 +125,9 @@ function App() {
               }
               onCerrar={(motivo) =>
                 cerrar(expedienteSeleccionado.id, motivo)
+              }
+              onReabrir={(motivo) =>
+                reabrir(expedienteSeleccionado.id, motivo)
               }
               onVolver={volverAlListado}
             />
