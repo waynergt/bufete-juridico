@@ -65,11 +65,11 @@ function App() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900">
+    <div className="flex min-h-dvh flex-col bg-slate-100 text-slate-900">
 
       {/* Encabezado */}
       <header className="bg-slate-900 text-white shadow-md">
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
 
           <div>
             <h1 className="text-2xl font-bold tracking-tight">
@@ -91,7 +91,7 @@ function App() {
       </header>
 
       {/* Contenido principal */}
-      <main className="mx-auto max-w-7xl px-6 py-8">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
 
         {navegacion.vista === 'listado' && (
           <ListadoExpedientes
@@ -154,10 +154,15 @@ function App() {
       </main>
 
       {/* Pie de página */}
-      <footer className="border-t border-slate-200 bg-white py-4">
-        <p className="text-center text-xs text-slate-500">
-          AI CODE WARS · Tech Day UMG 2026
-        </p>
+      <footer className="mt-auto bg-slate-900 text-slate-300">
+        <div className="mx-auto flex max-w-7xl flex-col items-center gap-1 px-4 py-4 text-center text-xs sm:flex-row sm:justify-between sm:px-6 sm:text-left">
+          <p>
+            <span className="font-semibold text-white">AI CODE WARS</span> · Tech Day UMG 2026
+          </p>
+          <p className="text-slate-400">
+            Bufete Popular · Prototipo con datos ficticios, sin asesoría jurídica.
+          </p>
+        </div>
       </footer>
 
     </div>
