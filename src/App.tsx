@@ -3,8 +3,8 @@ import { useState } from 'react';
 
 import { useExpedientes } from './hooks/useExpedientes';
 
-import { FormularioApertura } from './features/apertura/FormularioApertura';
-import { ListadoExpedientes } from './features/listado/ListadoExpedientes';
+import FormularioApertura from './features/apertura/FormularioApertura';
+import ListadoExpedientes from './features/listado/ListadoExpedientes';
 import { DetalleExpediente } from './features/detalle/DetalleExpediente';
 
 type Navegacion = {
