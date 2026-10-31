@@ -20,6 +20,8 @@ export interface UseExpedientes {
   agregarActividad(id: string, descripcion: string, tipoActividad?: string): Resultado<Expediente>;
   pasarASeguimiento(id: string): Resultado<Expediente>;
   cerrar(id: string, motivo: string): Resultado<Expediente>;
+  /** Parte 2: Cerrado → En seguimiento con motivo obligatorio. */
+  reabrir(id: string, motivo: string): Resultado<Expediente>;
   buscar(texto: string, estado?: EstadoExpediente): Expediente[];
 }
 
@@ -105,6 +107,11 @@ export function useExpedientes(): UseExpedientes {
     [aplicar],
   );
 
+  const reabrir = useCallback(
+    (id: string, motivo: string) => aplicar(id, (exp) => dominio.reabrirExpediente(exp, motivo)),
+    [aplicar],
+  );
+
   /** Filtra por id o solicitante (sin mayúsculas ni acentos) y estado opcional. */
   const buscar = useCallback(
     (texto: string, estado?: EstadoExpediente): Expediente[] => {
@@ -120,5 +127,5 @@ export function useExpedientes(): UseExpedientes {
     [expedientes],
   );
 
-  return { expedientes, crear, agregarActividad, pasarASeguimiento, cerrar, buscar };
+  return { expedientes, crear, agregarActividad, pasarASeguimiento, cerrar, reabrir, buscar };
 }
