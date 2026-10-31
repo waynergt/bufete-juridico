@@ -1,0 +1,24 @@
+# Dependencias (cada quien corre npm install)
+node_modules/
+
+# Build de Vite
+dist/
+dist-ssr/
+*.tsbuildinfo
+
+# Variables de entorno
+.env
+.env.*
+*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Sistema operativo y editores
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
