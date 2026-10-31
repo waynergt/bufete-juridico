@@ -1,1 +1,16 @@
 @import "tailwindcss";
+
+/*
+ * El fondo del documento coincide con el encabezado y el pie (slate-900), así el
+ * "rebote" del scroll arriba y abajo no muestra una franja blanca.
+ * El contenido de la app define su propio fondo claro (bg-slate-100).
+ */
+html,
+body {
+  background-color: var(--color-slate-900);
+  overscroll-behavior-y: none;
+}
+
+#root {
+  min-height: 100dvh;
+}
